@@ -373,6 +373,27 @@
         </div>
     </div>
 
+    <!-- Edit Note Modal -->
+    <div id="note-edit-modal" class="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 hidden">
+        <div class="bg-[var(--card-color)] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm">
+            <h3 class="text-2xl font-black mb-4">Edit Note</h3>
+            <textarea id="note-edit-textarea" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl font-medium outline-none text-sm text-white min-h-[120px] mb-6 resize-none" placeholder="Add exercise details, form cues, or weight used..."></textarea>
+            <div class="flex flex-col gap-3">
+                <button onclick="saveNoteEditor()" class="w-full py-4 bg-[var(--accent-color)] text-white rounded-2xl font-black uppercase tracking-widest">Save Note</button>
+                <button onclick="closeNoteEditor()" class="w-full py-4 bg-white/5 text-[var(--text-muted)] rounded-2xl font-black uppercase tracking-widest">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Note Modal -->
+    <div id="note-view-modal" class="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 hidden" onclick="closeNoteViewer(event)">
+        <div class="bg-[var(--card-color)] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm" onclick="event.stopPropagation()">
+            <h3 id="note-view-title" class="text-2xl font-black mb-4 text-[var(--accent-color)]">Exercise Note</h3>
+            <p id="note-view-body" class="text-white/80 mb-8 font-medium whitespace-pre-wrap leading-relaxed"></p>
+            <button onclick="closeNoteViewer()" class="w-full py-4 bg-white/5 text-[var(--text-muted)] rounded-2xl font-black uppercase tracking-widest">Close</button>
+        </div>
+    </div>
+
     <!-- Confirmation Modal -->
     <div id="confirm-modal" class="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 hidden">
         <div class="bg-[var(--card-color)] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm text-center">
@@ -429,6 +450,7 @@
 
         let timerInterval = null;
         let wakeLock = null;
+        let currentEditNoteIndex = -1;
 
         async function requestWakeLock() {
             if ('wakeLock' in navigator) {
@@ -493,7 +515,8 @@
                     el.closest('.fixed') || 
                     el.closest('.modal') || 
                     el.tagName === 'BUTTON' || 
-                    el.tagName === 'INPUT'
+                    el.tagName === 'INPUT' ||
+                    el.tagName === 'TEXTAREA'
                 );
             });
             if (!shouldIgnore) {
@@ -633,16 +656,24 @@
             container.innerHTML = '';
             state.exercises.forEach((ex, i) => {
                 const isActive = state.fullListMode || (state.activeIndex === i);
+                
+                const noteBtn = ex.note ? `
+                    <button onclick="openNoteViewer(${i}, event)" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 text-[var(--accent-color)] border border-white/10 active:scale-95 transition-transform shrink-0 ml-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                    </button>
+                ` : '';
+
                 const div = document.createElement('div');
                 div.className = `exercise-card ${isActive ? 'active-state' : ''}`;
                 div.innerHTML = `
                     ${(isActive && !state.fullListMode) ? '<div class="active-indicator"></div>' : ''}
-                    <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-4">
                         <div class="text-3xl font-black italic ${isActive ? 'text-[var(--accent-color)]' : 'text-white/20'} w-10">0${i+1}</div>
                         <div class="flex-1 flex flex-col">
                             <h3 class="font-black uppercase tracking-tight text-xl leading-none mb-1">${ex.name}</h3>
                             <span class="text-xl font-black uppercase tracking-tight ${isActive ? 'text-[var(--accent-color)]' : 'text-white/20'}">${ex.reps} Reps</span>
                         </div>
+                        ${noteBtn}
                     </div>
                 `;
                 container.appendChild(div);
@@ -673,15 +704,60 @@
             if (id === 'presets-overlay' && !el.classList.contains('hidden')) renderPresets();
         }
 
+        // Note Management Functions
+        function openNoteEditor(idx, event) {
+            if (event) event.stopPropagation();
+            currentEditNoteIndex = idx;
+            const ex = state.exercises[idx];
+            document.getElementById('note-edit-textarea').value = ex.note || '';
+            document.getElementById('note-edit-modal').classList.remove('hidden');
+        }
+
+        function closeNoteEditor() {
+            document.getElementById('note-edit-modal').classList.add('hidden');
+            currentEditNoteIndex = -1;
+        }
+
+        function saveNoteEditor() {
+            if (currentEditNoteIndex > -1) {
+                const text = document.getElementById('note-edit-textarea').value.trim();
+                state.exercises[currentEditNoteIndex].note = text;
+                renderEditList(); 
+            }
+            closeNoteEditor();
+        }
+
+        function openNoteViewer(idx, event) {
+            if (event) event.stopPropagation();
+            const ex = state.exercises[idx];
+            if (!ex || !ex.note) return;
+            document.getElementById('note-view-title').textContent = ex.name;
+            document.getElementById('note-view-body').textContent = ex.note;
+            document.getElementById('note-view-modal').classList.remove('hidden');
+        }
+
+        function closeNoteViewer(event) {
+            if (event) event.stopPropagation();
+            document.getElementById('note-view-modal').classList.add('hidden');
+        }
+
         function renderEditList() {
             const container = document.getElementById('edit-list');
             if (!container) return;
             container.innerHTML = '';
             state.exercises.forEach((ex, i) => {
+                const hasNote = !!ex.note;
+                const noteBtnClass = hasNote ? 'text-[var(--accent-color)]' : 'text-white/20';
+
                 const div = document.createElement('div');
                 div.className = "flex items-center gap-2 bg-white/5 p-3 rounded-2xl";
                 div.innerHTML = `
                     <input type="text" value="${ex.name}" onchange="state.exercises[${i}].name=this.value" class="flex-1 bg-transparent font-bold outline-none text-sm px-2">
+                    
+                    <button onclick="openNoteEditor(${i}, event)" class="w-8 h-8 flex items-center justify-center transition-colors ${noteBtnClass}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                    </button>
+
                     <div class="flex items-center bg-black/40 rounded-xl overflow-hidden border border-white/5">
                         <button onclick="updateExRep(${i}, -1)" class="w-10 h-10 font-black text-lg">-</button>
                         <input type="number" value="${ex.reps}" onchange="state.exercises[${i}].reps=parseInt(this.value)" class="w-10 bg-transparent text-center font-black text-xs outline-none">
@@ -728,7 +804,6 @@
                         </span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <!-- Play icon added to Load button below -->
                         <button onclick="loadPreset(${p.id})" class="load-btn">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M5 3l14 9-14 9V3z"/></svg>
                             <span class="font-black uppercase tracking-widest text-[10px]">Load</span>
