@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
+
     <!-- Mobile App Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
 
     <title>Workout Tracker</title>
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
     <style>
@@ -36,8 +36,8 @@
             background-color: var(--bg-color);
         }
 
-        body { 
-            font-family: 'Inter', sans-serif; 
+        body {
+            font-family: 'Inter', sans-serif;
             color: var(--text-color);
             -webkit-tap-highlight-color: transparent;
             touch-action: manipulation;
@@ -45,6 +45,26 @@
             flex-direction: column;
             padding-top: var(--safe-top);
         }
+
+        /* Drag and Drop Styles */
+        .sortable-ghost {
+            opacity: 0.3;
+            transform: scale(0.95);
+            background: var(--accent-color) !important;
+        }
+
+        .sortable-drag {
+            opacity: 1 !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: var(--card-color) !important;
+            z-index: 9999;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            touch-action: none;
+        }
+        .drag-handle:active { cursor: grabbing; }
 
         @keyframes particle-fade {
             0% { transform: translate(0, 0) scale(1); opacity: 1; }
@@ -54,7 +74,7 @@
         .particle {
             position: fixed;
             pointer-events: none;
-            z-index: 1001;
+            z-index: 2001;
             width: 6px;
             height: 6px;
             background: var(--accent-color);
@@ -71,7 +91,7 @@
         .feedback-label {
             position: fixed;
             pointer-events: none;
-            z-index: 999;
+            z-index: 1999;
             color: var(--text-color);
             font-weight: 900;
             font-size: 1.5rem;
@@ -82,7 +102,7 @@
         }
 
         .timer-nums { font-variant-numeric: tabular-nums; }
-        
+
         #header-section {
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             max-height: 400px;
@@ -124,20 +144,20 @@
             overflow-y: auto;
             scroll-behavior: smooth;
             -webkit-overflow-scrolling: touch;
-            padding: 10px 20px 250px 20px; 
+            padding: 10px 20px 250px 20px;
         }
 
-        .exercise-card { 
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); 
+        .exercise-card {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             background-color: var(--card-color);
             border: 1px solid var(--card-border);
             border-radius: 1.25rem;
             padding: 20px 24px;
             position: relative;
-            opacity: 0.3; 
+            opacity: 0.3;
         }
-        
-        .exercise-card.active-state { 
+
+        .exercise-card.active-state {
             opacity: 1 !important;
             border-color: var(--accent-color);
             background-color: rgba(255, 255, 255, 0.03);
@@ -160,7 +180,7 @@
 
         .theme-dot { width: 44px; height: 44px; border-radius: 14px; cursor: pointer; border: 3px solid transparent; }
         .theme-dot.selected { border-color: var(--accent-color); }
-        
+
         .modal {
             position: fixed;
             inset: 0;
@@ -240,657 +260,746 @@
 </head>
 <body id="main-body" onclick="handleGlobalClick(event)">
 
-    <div id="floating-timer">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span class="timer-nums">00:00</span>
-    </div>
+<div id="floating-timer">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    <span class="timer-nums">00:00</span>
+</div>
 
-    <header id="header-section" class="px-8 pt-6">
-        <div class="flex flex-col items-center text-center">
-            <span id="current-protocol-name" class="text-[9px] font-black tracking-[0.5em] text-[var(--text-muted)] uppercase mb-3 truncate max-w-[250px]">Training Protocol</span>
-            <div class="flex items-center gap-6 mb-6">
-                <div id="timer-display" class="text-7xl font-black timer-nums tracking-tighter">00:00</div>
-                <button onclick="addMinute(event)" class="bg-white/5 p-3 rounded-2xl border border-white/5">
-                    <span class="text-[var(--accent-color)] font-black text-xl">+1m</span>
-                </button>
-            </div>
-
-            <div class="flex gap-12 w-full justify-center">
-                <div class="text-center">
-                    <div id="round-display" class="text-4xl font-black">0</div>
-                    <div class="text-[9px] font-black uppercase tracking-widest text-[var(--accent-color)] mt-1">Rounds</div>
-                </div>
-                <div class="text-center">
-                    <div id="pb-display" class="text-4xl font-black text-[var(--text-muted)]">0</div>
-                    <div class="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-1">Best</div>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <div class="scroll-container" id="scroller">
-        <div class="max-w-xl mx-auto">
-            <div class="flex justify-between items-center mb-6 px-1">
-                <h2 id="routine-title" class="text-sm font-black uppercase tracking-widest">Complex</h2>
-                <div id="live-indicator" class="hidden items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent-color)] animate-pulse"></span>
-                    <span class="text-[9px] font-black uppercase text-[var(--accent-color)]">Session Active</span>
-                </div>
-            </div>
-            
-            <div id="main-list-view" class="flex flex-col gap-3"></div>
-        </div>
-    </div>
-
-    <!-- Navigation Bar -->
-    <div class="fixed bottom-10 left-0 w-full px-6 flex justify-center z-[80] pb-[var(--safe-bottom)]">
-        <div class="w-full max-w-md bg-black/40 backdrop-blur-3xl border border-white/10 p-2.5 rounded-[2.5rem] flex items-center gap-2 shadow-2xl">
-            
-            <button id="secondary-action-btn" onclick="handleSecondaryAction(event)" class="w-14 h-14 flex items-center justify-center bg-white/5 text-[var(--text-muted)] rounded-full transition-colors">
-                <svg id="restart-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
-                <svg id="stop-icon" class="hidden text-[var(--danger-color)]" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
-            </button>
-
-            <button id="start-btn" onclick="toggleTimer(event)" class="flex-1 bg-[var(--accent-color)] text-white h-14 rounded-[1.5rem] font-black uppercase tracking-widest text-sm shadow-lg">
-                Start Session
-            </button>
-
-            <button onclick="toggleOverlay('presets-overlay', event)" class="w-14 h-14 bg-white/5 rounded-full flex items-center justify-center text-[var(--text-muted)]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
-            </button>
-
-            <button onclick="toggleOverlay('settings-overlay', event)" class="w-14 h-14 bg-white/5 rounded-full flex items-center justify-center text-[var(--text-muted)]">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+<header id="header-section" class="px-8 pt-6">
+    <div class="flex flex-col items-center text-center">
+        <span id="current-protocol-name" class="text-[9px] font-black tracking-[0.5em] text-[var(--text-muted)] uppercase mb-3 truncate max-w-[250px]">Training Protocol</span>
+        <div class="flex items-center gap-6 mb-6">
+            <div id="timer-display" class="text-7xl font-black timer-nums tracking-tighter">00:00</div>
+            <button onclick="addMinute(event)" class="bg-white/5 p-3 rounded-2xl border border-white/5">
+                <span class="text-[var(--accent-color)] font-black text-xl">+1m</span>
             </button>
         </div>
-    </div>
 
-    <!-- Settings Modal -->
-    <div id="settings-overlay" class="modal hidden">
-        <div class="max-w-md mx-auto pb-40">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-4xl font-black uppercase tracking-tighter">Settings</h2>
-                <button onclick="toggleOverlay('settings-overlay', event)" class="w-12 h-12 bg-white/5 rounded-full">✕</button>
+        <div class="flex gap-12 w-full justify-center">
+            <div class="text-center">
+                <div id="round-display" class="text-4xl font-black">0</div>
+                <div class="text-[9px] font-black uppercase tracking-widest text-[var(--accent-color)] mt-1">Rounds</div>
             </div>
-            
-            <div class="space-y-8">
-                <div class="space-y-3">
-                    <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest block px-1">Routine Details</label>
-                    <input id="edit-complex-name" type="text" class="w-full bg-white/5 border border-white/10 p-5 rounded-2xl font-bold outline-none text-xl" placeholder="Routine Name">
-                    
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-white/5 p-4 rounded-2xl relative">
-                            <button onclick="toggleTimeMode()" class="absolute top-3 right-3 bg-[var(--accent-color)] text-[8px] font-black px-2 py-0.5 rounded-full uppercase text-white">
-                                <span id="time-mode-label">Switch</span>
-                            </button>
-                            <label id="input-time-type-label" class="text-[8px] font-black text-center block uppercase text-[var(--text-muted)] mb-1">Mins</label>
-                            <input id="edit-time-val" type="number" class="w-full bg-transparent text-center font-black text-2xl outline-none" placeholder="00">
-                        </div>
+            <div class="text-center">
+                <div id="pb-display" class="text-4xl font-black text-[var(--text-muted)]">0</div>
+                <div class="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-1">Best</div>
+            </div>
+        </div>
+    </div>
+</header>
 
-                        <div class="bg-white/5 p-4 rounded-2xl flex flex-col items-center justify-center gap-1">
-                            <label class="text-[8px] font-black uppercase text-[var(--text-muted)]">Full List</label>
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="full-list-toggle" onchange="toggleFullListMode()">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
+<div class="scroll-container" id="scroller">
+    <div class="max-w-xl mx-auto">
+        <div class="flex justify-between items-center mb-6 px-1">
+            <h2 id="routine-title" class="text-sm font-black uppercase tracking-widest">Complex</h2>
+            <div id="live-indicator" class="hidden items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-[var(--accent-color)] animate-pulse"></span>
+                <span class="text-[9px] font-black uppercase text-[var(--accent-color)]">Session Active</span>
+            </div>
+        </div>
+
+        <div id="main-list-view" class="flex flex-col gap-3"></div>
+    </div>
+</div>
+
+<!-- Navigation Bar -->
+<div class="fixed bottom-10 left-0 w-full px-6 flex justify-center z-[80] pb-[var(--safe-bottom)]">
+    <div class="w-full max-w-md bg-black/40 backdrop-blur-3xl border border-white/10 p-2.5 rounded-[2.5rem] flex items-center gap-2 shadow-2xl">
+
+        <button id="secondary-action-btn" onclick="handleSecondaryAction(event)" class="w-14 h-14 flex items-center justify-center bg-white/5 text-[var(--text-muted)] rounded-full transition-colors">
+            <svg id="restart-icon" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <svg id="stop-icon" class="hidden text-[var(--danger-color)]" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+        </button>
+
+        <button id="start-btn" onclick="toggleTimer(event)" class="flex-1 bg-[var(--accent-color)] text-white h-14 rounded-[1.5rem] font-black uppercase tracking-widest text-sm shadow-lg">
+            Start Session
+        </button>
+
+        <button onclick="toggleOverlay('presets-overlay', event)" class="w-14 h-14 bg-white/5 rounded-full flex items-center justify-center text-[var(--text-muted)]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
+        </button>
+
+        <button onclick="toggleOverlay('settings-overlay', event)" class="w-14 h-14 bg-white/5 rounded-full flex items-center justify-center text-[var(--text-muted)]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+        </button>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settings-overlay" class="modal hidden">
+    <div class="max-w-md mx-auto pb-40">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-4xl font-black uppercase tracking-tighter">Settings</h2>
+            <button onclick="toggleOverlay('settings-overlay', event)" class="w-12 h-12 bg-white/5 rounded-full">✕</button>
+        </div>
+
+        <div class="space-y-8">
+            <div class="space-y-3">
+                <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest block px-1">Routine Details</label>
+                <input id="edit-complex-name" type="text" class="w-full bg-white/5 border border-white/10 p-5 rounded-2xl font-bold outline-none text-xl" placeholder="Routine Name">
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white/5 p-4 rounded-2xl relative">
+                        <button onclick="toggleTimeMode()" class="absolute top-3 right-3 bg-[var(--accent-color)] text-[8px] font-black px-2 py-0.5 rounded-full uppercase text-white">
+                            <span id="time-mode-label">Switch</span>
+                        </button>
+                        <label id="input-time-type-label" class="text-[8px] font-black text-center block uppercase text-[var(--text-muted)] mb-1">Mins</label>
+                        <input id="edit-time-val" type="number" class="w-full bg-transparent text-center font-black text-2xl outline-none" placeholder="00">
+                    </div>
+
+                    <div class="bg-white/5 p-4 rounded-2xl flex flex-col items-center justify-center gap-1">
+                        <label class="text-[8px] font-black uppercase text-[var(--text-muted)]">Full List</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="full-list-toggle" onchange="toggleFullListMode()">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                 </div>
+            </div>
 
-                <div>
-                    <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-4 block">Visual Theme</label>
-                    <div class="grid grid-cols-5 gap-3">
-                        <div onclick="setTheme('default')" id="dot-default" class="theme-dot" style="background: linear-gradient(135deg, #0f0f12, #ff3344)"></div>
-                        <div onclick="setTheme('1')" id="dot-1" class="theme-dot" style="background: linear-gradient(135deg, #0f0f14, #a855f7)"></div>
-                        <div onclick="setTheme('2')" id="dot-2" class="theme-dot" style="background: linear-gradient(135deg, #0f172a, #38bdf8)"></div>
-                        <div onclick="setTheme('3')" id="dot-3" class="theme-dot" style="background: linear-gradient(135deg, #0d120d, #4ade80)"></div>
-                        <div onclick="setTheme('4')" id="dot-4" class="theme-dot" style="background: linear-gradient(135deg, #141210, #f59e0b)"></div>
-                    </div>
+            <div>
+                <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-4 block">Visual Theme</label>
+                <div class="grid grid-cols-5 gap-3">
+                    <div onclick="setTheme('default')" id="dot-default" class="theme-dot" style="background: linear-gradient(135deg, #0f0f12, #ff3344)"></div>
+                    <div onclick="setTheme('1')" id="dot-1" class="theme-dot" style="background: linear-gradient(135deg, #0f0f14, #a855f7)"></div>
+                    <div onclick="setTheme('2')" id="dot-2" class="theme-dot" style="background: linear-gradient(135deg, #0f172a, #38bdf8)"></div>
+                    <div onclick="setTheme('3')" id="dot-3" class="theme-dot" style="background: linear-gradient(135deg, #0d120d, #4ade80)"></div>
+                    <div onclick="setTheme('4')" id="dot-4" class="theme-dot" style="background: linear-gradient(135deg, #141210, #f59e0b)"></div>
                 </div>
+            </div>
 
-                <div id="edit-list" class="space-y-2.5"></div>
-                <button onclick="addExerciseField()" class="w-full py-5 border-2 border-dashed border-white/10 rounded-2xl text-[10px] font-black uppercase text-[var(--text-muted)]">+ Add Step</button>
+            <div class="px-1 flex justify-between items-center">
+                <label class="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Exercises & Steps</label>
             </div>
-            
-            <div class="flex items-center gap-3 mt-10">
-                <button onclick="showConfirmPBReset()" class="w-16 h-[72px] bg-white/5 text-[var(--text-muted)] rounded-[1.5rem] flex items-center justify-center active:scale-95 transition-transform border border-white/5" title="Reset PB">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
-                </button>
-                <button onclick="saveSettings()" class="flex-1 py-6 bg-[var(--accent-color)] text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Save Changes</button>
-            </div>
+            <div id="edit-list" class="space-y-2.5"></div>
+            <button onclick="addExerciseField()" class="w-full py-5 border-2 border-dashed border-white/10 rounded-2xl text-[10px] font-black uppercase text-[var(--text-muted)]">+ Add Step</button>
+        </div>
+
+        <div class="flex items-center gap-3 mt-10">
+            <button onclick="showConfirmPBReset()" class="w-16 h-[72px] bg-white/5 text-[var(--text-muted)] rounded-[1.5rem] flex items-center justify-center active:scale-95 transition-transform border border-white/5" title="Reset PB">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+            </button>
+            <button onclick="saveSettings()" class="flex-1 py-6 bg-[var(--accent-color)] text-white rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Save Changes</button>
         </div>
     </div>
+</div>
 
-    <!-- Library Modal -->
-    <div id="presets-overlay" class="modal hidden">
-        <div class="max-w-md mx-auto flex flex-col h-full">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-4xl font-black uppercase tracking-tighter">Library</h2>
-                <button onclick="toggleOverlay('presets-overlay', event)" class="w-12 h-12 bg-white/5 rounded-full">✕</button>
-            </div>
-            <div id="presets-list" class="flex-1 space-y-3 overflow-y-auto pb-20"></div>
-            <button onclick="createNewPreset()" class="mt-6 w-full py-6 bg-white text-black rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Create New</button>
+<!-- Library Modal -->
+<div id="presets-overlay" class="modal hidden">
+    <div class="max-w-md mx-auto flex flex-col h-full">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-4xl font-black uppercase tracking-tighter">Library</h2>
+            <button onclick="toggleOverlay('presets-overlay', event)" class="w-12 h-12 bg-white/5 rounded-full">✕</button>
+        </div>
+        <div id="presets-list" class="flex-1 space-y-3 overflow-y-auto pb-20"></div>
+        <button onclick="createNewPreset()" class="mt-6 w-full py-6 bg-white text-black rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Create New</button>
+    </div>
+</div>
+
+<!-- Note & Confirm Modals -->
+<div id="note-edit-modal" class="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 hidden">
+    <div class="bg-[var(--card-color)] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm">
+        <h3 class="text-2xl font-black mb-4">Edit Note</h3>
+        <textarea id="note-edit-textarea" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl font-medium outline-none text-sm text-white min-h-[120px] mb-6 resize-none" placeholder="Add exercise details..."></textarea>
+        <div class="flex flex-col gap-3">
+            <button onclick="saveNoteEditor()" class="w-full py-4 bg-[var(--accent-color)] text-white rounded-2xl font-black uppercase tracking-widest">Save Note</button>
+            <button onclick="closeNoteEditor()" class="w-full py-4 bg-white/5 text-[var(--text-muted)] rounded-2xl font-black uppercase tracking-widest">Cancel</button>
         </div>
     </div>
+</div>
 
-    <!-- Edit Note Modal -->
-    <div id="note-edit-modal" class="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 hidden">
-        <div class="bg-[var(--card-color)] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm">
-            <h3 class="text-2xl font-black mb-4">Edit Note</h3>
-            <textarea id="note-edit-textarea" class="w-full bg-white/5 border border-white/10 p-4 rounded-2xl font-medium outline-none text-sm text-white min-h-[120px] mb-6 resize-none" placeholder="Add exercise details, form cues, or weight used..."></textarea>
-            <div class="flex flex-col gap-3">
-                <button onclick="saveNoteEditor()" class="w-full py-4 bg-[var(--accent-color)] text-white rounded-2xl font-black uppercase tracking-widest">Save Note</button>
-                <button onclick="closeNoteEditor()" class="w-full py-4 bg-white/5 text-[var(--text-muted)] rounded-2xl font-black uppercase tracking-widest">Cancel</button>
-            </div>
+<div id="note-view-modal" class="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 hidden" onclick="closeNoteViewer(event)">
+    <div class="bg-[var(--card-color)] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm" onclick="event.stopPropagation()">
+        <h3 id="note-view-title" class="text-2xl font-black mb-4 text-[var(--accent-color)]">Exercise Note</h3>
+        <p id="note-view-body" class="text-white/80 mb-8 font-medium whitespace-pre-wrap leading-relaxed"></p>
+        <button onclick="closeNoteViewer()" class="w-full py-4 bg-white/5 text-[var(--text-muted)] rounded-2xl font-black uppercase tracking-widest">Close</button>
+    </div>
+</div>
+
+<div id="confirm-modal" class="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 hidden">
+    <div class="bg-[var(--card-color)] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm text-center">
+        <h3 id="confirm-title" class="text-2xl font-black mb-4">Delete Routine?</h3>
+        <p id="confirm-body" class="text-[var(--text-muted)] mb-8 font-medium">This action cannot be undone.</p>
+        <div class="flex flex-col gap-3">
+            <button id="confirm-action-btn" class="w-full py-4 bg-[var(--danger-color)] text-white rounded-2xl font-black uppercase tracking-widest">Delete</button>
+            <button onclick="hideConfirm()" class="w-full py-4 bg-white/5 text-[var(--text-muted)] rounded-2xl font-black uppercase tracking-widest">Cancel</button>
         </div>
     </div>
+</div>
 
-    <!-- View Note Modal -->
-    <div id="note-view-modal" class="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 hidden" onclick="closeNoteViewer(event)">
-        <div class="bg-[var(--card-color)] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm" onclick="event.stopPropagation()">
-            <h3 id="note-view-title" class="text-2xl font-black mb-4 text-[var(--accent-color)]">Exercise Note</h3>
-            <p id="note-view-body" class="text-white/80 mb-8 font-medium whitespace-pre-wrap leading-relaxed"></p>
-            <button onclick="closeNoteViewer()" class="w-full py-4 bg-white/5 text-[var(--text-muted)] rounded-2xl font-black uppercase tracking-widest">Close</button>
-        </div>
-    </div>
+<!-- Drag & Drop Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
 
-    <!-- Confirmation Modal -->
-    <div id="confirm-modal" class="fixed inset-0 z-[2000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-8 hidden">
-        <div class="bg-[var(--card-color)] border border-white/10 p-8 rounded-[2.5rem] w-full max-w-sm text-center">
-            <h3 id="confirm-title" class="text-2xl font-black mb-4">Delete Routine?</h3>
-            <p id="confirm-body" class="text-[var(--text-muted)] mb-8 font-medium">This action cannot be undone.</p>
-            <div class="flex flex-col gap-3">
-                <button id="confirm-action-btn" class="w-full py-4 bg-[var(--danger-color)] text-white rounded-2xl font-black uppercase tracking-widest">Delete</button>
-                <button onclick="hideConfirm()" class="w-full py-4 bg-white/5 text-[var(--text-muted)] rounded-2xl font-black uppercase tracking-widest">Cancel</button>
-            </div>
-        </div>
-    </div>
+<script>
+    let state = {
+        isRunning: false,
+        fullListMode: false,
+        timeLeft: 3600,
+        totalDuration: 3600,
+        rounds: 0,
+        activeIndex: 0,
+        name: "Hercules Complex",
+        theme: "default",
+        activePresetId: 1,
+        highScores: {},
+        exercises: [],
+        inputTimeMode: 'mins',
+        presets: [
+            { id: 1, name: "Hercules Complex", totalDuration: 3600, exercises: [
+                { name: "Single arm swing", reps: 3 }, { name: "KB cleans", reps: 3 },
+                { name: "KB OHP", reps: 3 }, { name: "KB deadlift", reps: 4 }
+            ]},
+            { id: 2, name: "Sisyphus Complex", totalDuration: 3600, exercises: [
+                { name: "Two handed squat swing", reps: 5 }, { name: "Goblet squats", reps: 4 },
+                { name: "Lunges", reps: 3 }, { name: "Back extension", reps: 5 }
+            ]},
+            { id: 3, name: "GIMLI Complex", totalDuration: 3600, exercises: [
+                { name: "KB swings", reps: 6 }, { name: "KB high pulls", reps: 5 },
+                { name: "Goblet squats", reps: 4 }, { name: "Jefferson curl", reps: 4 }
+            ]},
+            { id: 4, name: "ARAGORN Complex", totalDuration: 3600, exercises: [
+                { name: "Single arm rows", reps: 6 }, { name: "Kettlebell cleans", reps: 5 },
+                { name: "KB OHP", reps: 4 }, { name: "KB Hinge", reps: 4 }
+            ]},
+            { id: 5, name: "Balanced complex", totalDuration: 3600, exercises: [
+                { name: "KB windmills", reps: 4 }, { name: "KB Cossack squats", reps: 6 },
+                { name: "Split squats", reps: 5 }, { name: "KB Deadlift", reps: 4 }
+            ]},
+            { id: 6, name: "Essentials", totalDuration: 3600, exercises: [
+                { name: "KB Halos", reps: 6 }, { name: "Kickbacks", reps: 12 },
+                { name: "Hip flexor running", reps: 12 }, { name: "Back extension hold", reps: 30 },
+                { name: "Neck", reps: 12 }, { name: "Forearms", reps: 15 }
+            ]}
+        ]
+    };
 
-    <script>
-        let state = {
-            isRunning: false,
-            fullListMode: false,
-            timeLeft: 3600,
-            totalDuration: 3600,
-            rounds: 0,
-            activeIndex: 0,
-            name: "Hercules Complex",
-            theme: "default",
-            highScores: {},
-            exercises: [],
-            inputTimeMode: 'mins', 
-            presets: [
-                { id: 1, name: "Hercules Complex", totalDuration: 3600, exercises: [
-                    { name: "Single arm swing", reps: 3 }, { name: "KB cleans", reps: 3 },
-                    { name: "KB OHP", reps: 3 }, { name: "KB deadlift", reps: 4 }
-                ]},
-                { id: 2, name: "Sisyphus Complex", totalDuration: 3600, exercises: [
-                    { name: "Two handed squat swing", reps: 5 }, { name: "Goblet squats", reps: 4 },
-                    { name: "Lunges", reps: 3 }, { name: "Back extension", reps: 5 }
-                ]},
-                { id: 3, name: "GIMLI Complex", totalDuration: 3600, exercises: [
-                    { name: "KB swings", reps: 6 }, { name: "KB high pulls", reps: 5 },
-                    { name: "Goblet squats", reps: 4 }, { name: "Jefferson curl", reps: 4 }
-                ]},
-                { id: 4, name: "ARAGORN Complex", totalDuration: 3600, exercises: [
-                    { name: "Single arm rows", reps: 6 }, { name: "Kettlebell cleans", reps: 5 },
-                    { name: "KB OHP", reps: 4 }, { name: "KB Hinge", reps: 4 }
-                ]},
-                { id: 5, name: "Balanced complex", totalDuration: 3600, exercises: [
-                    { name: "KB windmills", reps: 4 }, { name: "KB Cossack squats", reps: 6 },
-                    { name: "Split squats", reps: 5 }, { name: "KB Deadlift", reps: 4 }
-                ]},
-                { id: 6, name: "Essentials", totalDuration: 3600, exercises: [
-                    { name: "KB Halos", reps: 6 }, { name: "Kickbacks", reps: 12 },
-                    { name: "Hip flexor running", reps: 12 }, { name: "Back extension hold", reps: 30 },
-                    { name: "Neck", reps: 12 }, { name: "Forearms", reps: 15 }
-                ]}
-            ]
-        };
+    let timerInterval = null;
+    let wakeLock = null;
+    let currentEditNoteIndex = -1;
+    let sortableExercises = null;
+    let sortablePresets = null;
 
-        let timerInterval = null;
-        let wakeLock = null;
-        let currentEditNoteIndex = -1;
-
-        async function requestWakeLock() {
-            if ('wakeLock' in navigator) {
-                try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+    window.addEventListener('popstate', function(event) {
+        const overlays = ['settings-overlay', 'presets-overlay', 'note-edit-modal', 'note-view-modal', 'confirm-modal'];
+        let closedSomething = false;
+        overlays.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !el.classList.contains('hidden')) {
+                el.classList.add('hidden');
+                closedSomething = true;
             }
+        });
+        if (closedSomething) history.pushState({ overlay: true }, "");
+    });
+
+    async function requestWakeLock() {
+        if ('wakeLock' in navigator) {
+            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
+        }
+    }
+
+    function releaseWakeLock() {
+        if (wakeLock !== null) {
+            wakeLock.release().then(() => { wakeLock = null; });
+        }
+    }
+
+    function init() {
+        const saved = localStorage.getItem('kb_complex_v16_data');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            state = { ...state, ...parsed, isRunning: false };
+            state.timeLeft = state.totalDuration;
+        } else {
+            loadPreset(state.presets[0].id, false);
         }
 
-        function releaseWakeLock() {
-            if (wakeLock !== null) {
-                wakeLock.release().then(() => { wakeLock = null; });
+        document.getElementById('full-list-toggle').checked = !!state.fullListMode;
+        setTheme(state.theme || 'default');
+        renderMainList();
+        updateUI();
+        history.pushState({ main: true }, "");
+
+        // Init Draggable Exercises
+        const editEl = document.getElementById('edit-list');
+        sortableExercises = new Sortable(editEl, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: (evt) => {
+                const item = state.exercises.splice(evt.oldIndex, 1)[0];
+                state.exercises.splice(evt.newIndex, 0, item);
+                renderEditList();
             }
-        }
+        });
 
-        function init() {
-            const saved = localStorage.getItem('kb_complex_v16_data');
-            if (saved) {
-                const parsed = JSON.parse(saved);
-                state = { ...state, ...parsed, isRunning: false };
-                state.timeLeft = state.totalDuration;
-            } else {
-                loadPreset(state.presets[0].id, false);
+        // Init Draggable Presets
+        const presetEl = document.getElementById('presets-list');
+        sortablePresets = new Sortable(presetEl, {
+            handle: '.drag-handle',
+            animation: 150,
+            ghostClass: 'sortable-ghost',
+            onEnd: (evt) => {
+                const item = state.presets.splice(evt.oldIndex, 1)[0];
+                state.presets.splice(evt.newIndex, 0, item);
+                saveData();
+                renderPresets();
             }
-            
-            document.getElementById('full-list-toggle').checked = !!state.fullListMode;
-            setTheme(state.theme || 'default');
-            renderMainList();
-            updateUI();
+        });
+    }
+
+    function showBurstFeedback(x, y, text) {
+        const particleCount = 12;
+        for (let i = 0; i < particleCount; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = `${x}px`;
+            particle.style.top = `${y}px`;
+            const angle = (i / particleCount) * Math.PI * 2;
+            const distance = 40 + Math.random() * 60;
+            const tx = Math.cos(angle) * distance;
+            const ty = Math.sin(angle) * distance;
+            particle.style.setProperty('--tx', `${tx}px`);
+            particle.style.setProperty('--ty', `${ty}px`);
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 600);
         }
 
-        function showBurstFeedback(x, y, text) {
-            const particleCount = 12;
-            for (let i = 0; i < particleCount; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = `${x}px`;
-                particle.style.top = `${y}px`;
-                const angle = (i / particleCount) * Math.PI * 2;
-                const distance = 40 + Math.random() * 60;
-                const tx = Math.cos(angle) * distance;
-                const ty = Math.sin(angle) * distance;
-                particle.style.setProperty('--tx', `${tx}px`);
-                particle.style.setProperty('--ty', `${ty}px`);
-                document.body.appendChild(particle);
-                setTimeout(() => particle.remove(), 600);
-            }
+        const label = document.createElement('div');
+        label.className = 'feedback-label';
+        label.textContent = text;
+        label.style.left = `${x}px`;
+        label.style.top = `${y}px`;
+        document.body.appendChild(label);
+        setTimeout(() => label.remove(), 800);
+    }
 
-            const label = document.createElement('div');
-            label.className = 'feedback-label';
-            label.textContent = text;
-            label.style.left = `${x}px`;
-            label.style.top = `${y}px`;
-            document.body.appendChild(label);
-            setTimeout(() => label.remove(), 800);
+    function handleGlobalClick(e) {
+        if (!state.isRunning) return;
+        const path = e.composedPath();
+        const shouldIgnore = path.some(el => {
+            if (!el.tagName) return false;
+            return (
+                el.closest('.fixed') ||
+                el.closest('.modal') ||
+                el.tagName === 'BUTTON' ||
+                el.tagName === 'INPUT' ||
+                el.tagName === 'TEXTAREA'
+            );
+        });
+        if (!shouldIgnore) {
+            nextStep(e.clientX, e.clientY);
         }
+    }
 
-        function handleGlobalClick(e) {
-            if (!state.isRunning) return;
-            const path = e.composedPath();
-            const shouldIgnore = path.some(el => {
-                if (!el.tagName) return false;
-                return (
-                    el.closest('.fixed') || 
-                    el.closest('.modal') || 
-                    el.tagName === 'BUTTON' || 
-                    el.tagName === 'INPUT' ||
-                    el.tagName === 'TEXTAREA'
-                );
-            });
-            if (!shouldIgnore) {
-                nextStep(e.clientX, e.clientY);
-            }
+    function toggleFullListMode() {
+        state.fullListMode = document.getElementById('full-list-toggle').checked;
+        saveData();
+        renderMainList();
+    }
+
+    function toggleTimeMode() {
+        const currentVal = parseInt(document.getElementById('edit-time-val').value) || 0;
+        if (state.inputTimeMode === 'mins') {
+            state.inputTimeMode = 'secs';
+            document.getElementById('edit-time-val').value = currentVal * 60;
+            document.getElementById('input-time-type-label').textContent = 'Secs';
+            document.getElementById('time-mode-label').textContent = 'To Mins';
+        } else {
+            state.inputTimeMode = 'mins';
+            document.getElementById('edit-time-val').value = Math.floor(currentVal / 60);
+            document.getElementById('input-time-type-label').textContent = 'Mins';
+            document.getElementById('time-mode-label').textContent = 'To Secs';
         }
+    }
 
-        function toggleFullListMode() {
-            state.fullListMode = document.getElementById('full-list-toggle').checked;
-            saveData();
-            renderMainList();
-        }
+    function toggleTimer(e) {
+        if (e) e.stopPropagation();
+        if (state.isRunning) pauseSession();
+        else startSession();
+    }
 
-        function toggleTimeMode() {
-            const currentVal = parseInt(document.getElementById('edit-time-val').value) || 0;
-            if (state.inputTimeMode === 'mins') {
-                state.inputTimeMode = 'secs';
-                document.getElementById('edit-time-val').value = currentVal * 60;
-                document.getElementById('input-time-type-label').textContent = 'Secs';
-                document.getElementById('time-mode-label').textContent = 'To Mins';
-            } else {
-                state.inputTimeMode = 'mins';
-                document.getElementById('edit-time-val').value = Math.floor(currentVal / 60);
-                document.getElementById('input-time-type-label').textContent = 'Mins';
-                document.getElementById('time-mode-label').textContent = 'To Secs';
-            }
-        }
-
-        function toggleTimer(e) {
-            if (e) e.stopPropagation();
-            if (state.isRunning) pauseSession();
-            else startSession();
-        }
-
-        function startSession() {
-            state.isRunning = true;
-            document.body.classList.add('training-mode');
-            document.getElementById('live-indicator').classList.replace('hidden', 'flex');
-            document.getElementById('start-btn').textContent = "Pause Session";
-            document.getElementById('restart-icon').classList.remove('hidden');
-            document.getElementById('stop-icon').classList.add('hidden');
-            requestWakeLock();
-            timerInterval = setInterval(() => {
-                if (state.timeLeft > 0) {
-                    state.timeLeft--;
-                    updateUI();
-                } else {
-                    completeSession();
-                }
-            }, 1000);
-            if (!state.fullListMode) scrollToActive();
-        }
-
-        function pauseSession() {
-            state.isRunning = false;
-            document.body.classList.remove('training-mode');
-            document.getElementById('live-indicator').classList.replace('flex', 'hidden');
-            clearInterval(timerInterval);
-            document.getElementById('start-btn').textContent = "Resume Training";
-            document.getElementById('restart-icon').classList.add('hidden');
-            document.getElementById('stop-icon').classList.remove('hidden');
-            releaseWakeLock();
-        }
-
-        function handleSecondaryAction(e) {
-            if (e) e.stopPropagation();
-            if (state.isRunning) {
-                state.timeLeft = state.totalDuration;
-                state.rounds = 0;
-                state.activeIndex = 0;
+    function startSession() {
+        state.isRunning = true;
+        document.body.classList.add('training-mode');
+        document.getElementById('live-indicator').classList.replace('hidden', 'flex');
+        document.getElementById('start-btn').textContent = "Pause Session";
+        document.getElementById('restart-icon').classList.remove('hidden');
+        document.getElementById('stop-icon').classList.add('hidden');
+        requestWakeLock();
+        timerInterval = setInterval(() => {
+            if (state.timeLeft > 0) {
+                state.timeLeft--;
                 updateUI();
-                renderMainList();
             } else {
                 completeSession();
-                resetApp();
             }
-        }
+        }, 1000);
+        if (!state.fullListMode) scrollToActive();
+    }
 
-        function completeSession() {
-            pauseSession();
-            checkAndSaveHighScore();
+    function pauseSession() {
+        state.isRunning = false;
+        document.body.classList.remove('training-mode');
+        document.getElementById('live-indicator').classList.replace('flex', 'hidden');
+        clearInterval(timerInterval);
+        document.getElementById('start-btn').textContent = "Resume Training";
+        document.getElementById('restart-icon').classList.add('hidden');
+        document.getElementById('stop-icon').classList.remove('hidden');
+        releaseWakeLock();
+    }
+
+    function handleSecondaryAction(e) {
+        if (e) e.stopPropagation();
+        if (state.isRunning) {
+            state.timeLeft = state.totalDuration;
+            state.rounds = 0;
+            state.activeIndex = 0;
             updateUI();
-        }
-
-        function checkAndSaveHighScore() {
-            const currentPB = state.highScores[state.name] || 0;
-            if (state.rounds > currentPB) {
-                state.highScores[state.name] = state.rounds;
-                saveData();
-            }
-        }
-
-        function updateUI() {
-            const m = Math.floor(state.timeLeft / 60);
-            const s = state.timeLeft % 60;
-            const timeStr = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            document.getElementById('timer-display').textContent = timeStr;
-            document.getElementById('floating-timer').querySelector('span').textContent = timeStr;
-            document.getElementById('round-display').textContent = state.rounds;
-            document.getElementById('pb-display').textContent = state.highScores[state.name] || 0;
-            document.getElementById('routine-title').textContent = state.name;
-            document.getElementById('current-protocol-name').textContent = state.name;
-        }
-
-        function nextStep(clickX, clickY) {
-            let feedbackText = "Next!";
-            if (state.fullListMode) {
-                state.rounds++;
-                state.activeIndex = 0;
-                feedbackText = "Done!";
-            } else {
-                if (state.activeIndex < state.exercises.length - 1) {
-                    state.activeIndex++;
-                    feedbackText = "Next!";
-                } else {
-                    state.activeIndex = 0;
-                    state.rounds++;
-                    feedbackText = "Done!";
-                }
-            }
-            if (clickX !== undefined) showBurstFeedback(clickX, clickY, feedbackText);
             renderMainList();
-            updateUI();
-            if (!state.fullListMode) scrollToActive();
+        } else {
+            completeSession();
+            resetApp();
         }
+    }
 
-        function scrollToActive() {
-            setTimeout(() => {
-                const activeEl = document.querySelector('.exercise-card.active-state');
-                if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 50);
-        }
+    function completeSession() {
+        pauseSession();
+        checkAndSaveHighScore();
+        updateUI();
+    }
 
-        function renderMainList() {
-            const container = document.getElementById('main-list-view');
-            if (!container) return;
-            container.innerHTML = '';
-            state.exercises.forEach((ex, i) => {
-                const isActive = state.fullListMode || (state.activeIndex === i);
-                
-                const noteBtn = ex.note ? `
-                    <button onclick="openNoteViewer(${i}, event)" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 text-[var(--accent-color)] border border-white/10 active:scale-95 transition-transform shrink-0 ml-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
-                    </button>
-                ` : '';
-
-                const div = document.createElement('div');
-                div.className = `exercise-card ${isActive ? 'active-state' : ''}`;
-                div.innerHTML = `
-                    ${(isActive && !state.fullListMode) ? '<div class="active-indicator"></div>' : ''}
-                    <div class="flex items-center gap-4">
-                        <div class="text-3xl font-black italic ${isActive ? 'text-[var(--accent-color)]' : 'text-white/20'} w-10">0${i+1}</div>
-                        <div class="flex-1 flex flex-col">
-                            <h3 class="font-black uppercase tracking-tight text-xl leading-none mb-1">${ex.name}</h3>
-                            <span class="text-xl font-black uppercase tracking-tight ${isActive ? 'text-[var(--accent-color)]' : 'text-white/20'}">${ex.reps} Reps</span>
-                        </div>
-                        ${noteBtn}
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function setTheme(theme) {
-            state.theme = theme;
-            const classList = document.body.classList;
-            [...classList].forEach(c => { if(c.startsWith('theme-')) classList.remove(c); });
-            if (theme !== 'default') classList.add(`theme-${theme}`);
-            document.querySelectorAll('.theme-dot').forEach(dot => dot.classList.remove('selected'));
-            const dot = document.getElementById(`dot-${theme}`);
-            if (dot) dot.classList.add('selected');
+    function checkAndSaveHighScore() {
+        const currentPB = state.highScores[state.name] || 0;
+        if (state.rounds > currentPB) {
+            state.highScores[state.name] = state.rounds;
             saveData();
         }
+    }
 
-        function toggleOverlay(id, e) {
-            if (e) e.stopPropagation();
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.classList.toggle('hidden');
-            if (id === 'settings-overlay' && !el.classList.contains('hidden')) {
+    function updateUI() {
+        const m = Math.floor(state.timeLeft / 60);
+        const s = state.timeLeft % 60;
+        const timeStr = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        document.getElementById('timer-display').textContent = timeStr;
+        document.getElementById('floating-timer').querySelector('span').textContent = timeStr;
+        document.getElementById('round-display').textContent = state.rounds;
+        document.getElementById('pb-display').textContent = state.highScores[state.name] || 0;
+        document.getElementById('routine-title').textContent = state.name;
+        document.getElementById('current-protocol-name').textContent = state.name;
+    }
+
+    function nextStep(clickX, clickY) {
+        let feedbackText = "Next!";
+        if (state.fullListMode) {
+            state.rounds++;
+            state.activeIndex = 0;
+            feedbackText = "Done!";
+        } else {
+            if (state.activeIndex < state.exercises.length - 1) {
+                state.activeIndex++;
+                feedbackText = "Next!";
+            } else {
+                state.activeIndex = 0;
+                state.rounds++;
+                feedbackText = "Done!";
+            }
+        }
+        if (clickX !== undefined) showBurstFeedback(clickX, clickY, feedbackText);
+        renderMainList();
+        updateUI();
+        if (!state.fullListMode) scrollToActive();
+    }
+
+    function scrollToActive() {
+        setTimeout(() => {
+            const activeEl = document.querySelector('.exercise-card.active-state');
+            if (activeEl) activeEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+    }
+
+    function renderMainList() {
+        const container = document.getElementById('main-list-view');
+        if (!container) return;
+        container.innerHTML = '';
+        state.exercises.forEach((ex, i) => {
+            const isActive = state.fullListMode || (state.activeIndex === i);
+            const noteBtn = ex.note ? `
+                <button onclick="openNoteViewer(${i}, event)" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 text-[var(--accent-color)] border border-white/10 active:scale-95 transition-transform shrink-0 ml-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                </button>
+            ` : '';
+            const div = document.createElement('div');
+            div.className = `exercise-card ${isActive ? 'active-state' : ''}`;
+            div.innerHTML = `
+                ${(isActive && !state.fullListMode) ? '<div class="active-indicator"></div>' : ''}
+                <div class="flex items-center gap-4">
+                    <div class="text-3xl font-black italic ${isActive ? 'text-[var(--accent-color)]' : 'text-white/20'} w-10">0${i+1}</div>
+                    <div class="flex-1 flex flex-col">
+                        <h3 class="font-black uppercase tracking-tight text-xl leading-none mb-1">${ex.name}</h3>
+                        <span class="text-xl font-black uppercase tracking-tight ${isActive ? 'text-[var(--accent-color)]' : 'text-white/20'}">${ex.reps} Reps</span>
+                    </div>
+                    ${noteBtn}
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function setTheme(theme) {
+        state.theme = theme;
+        const classList = document.body.classList;
+        [...classList].forEach(c => { if(c.startsWith('theme-')) classList.remove(c); });
+        if (theme !== 'default') classList.add(`theme-${theme}`);
+        document.querySelectorAll('.theme-dot').forEach(dot => dot.classList.remove('selected'));
+        const dot = document.getElementById(`dot-${theme}`);
+        if (dot) dot.classList.add('selected');
+        saveData();
+    }
+
+    function toggleOverlay(id, e) {
+        if (e) e.stopPropagation();
+        const el = document.getElementById(id);
+        if (!el) return;
+        const isClosing = !el.classList.contains('hidden');
+        el.classList.toggle('hidden');
+        if (!isClosing) {
+            history.pushState({ overlay: id }, "");
+            if (id === 'settings-overlay') {
                 document.getElementById('edit-complex-name').value = state.name;
                 document.getElementById('edit-time-val').value = state.inputTimeMode === 'mins' ? Math.floor(state.totalDuration / 60) : state.totalDuration;
                 renderEditList();
             }
-            if (id === 'presets-overlay' && !el.classList.contains('hidden')) renderPresets();
+            if (id === 'presets-overlay') renderPresets();
         }
+    }
 
-        // Note Management Functions
-        function openNoteEditor(idx, event) {
-            if (event) event.stopPropagation();
-            currentEditNoteIndex = idx;
-            const ex = state.exercises[idx];
-            document.getElementById('note-edit-textarea').value = ex.note || '';
-            document.getElementById('note-edit-modal').classList.remove('hidden');
+    function openNoteEditor(idx, event) {
+        if (event) event.stopPropagation();
+        currentEditNoteIndex = idx;
+        const ex = state.exercises[idx];
+        document.getElementById('note-edit-textarea').value = ex.note || '';
+        document.getElementById('note-edit-modal').classList.remove('hidden');
+        history.pushState({ overlay: 'note-edit' }, "");
+    }
+
+    function closeNoteEditor() {
+        document.getElementById('note-edit-modal').classList.add('hidden');
+        currentEditNoteIndex = -1;
+    }
+
+    function saveNoteEditor() {
+        if (currentEditNoteIndex > -1) {
+            const text = document.getElementById('note-edit-textarea').value.trim();
+            state.exercises[currentEditNoteIndex].note = text;
+            renderEditList();
         }
+        closeNoteEditor();
+    }
 
-        function closeNoteEditor() {
-            document.getElementById('note-edit-modal').classList.add('hidden');
-            currentEditNoteIndex = -1;
-        }
+    function openNoteViewer(idx, event) {
+        if (event) event.stopPropagation();
+        const ex = state.exercises[idx];
+        if (!ex || !ex.note) return;
+        document.getElementById('note-view-title').textContent = ex.name;
+        document.getElementById('note-view-body').textContent = ex.note;
+        document.getElementById('note-view-modal').classList.remove('hidden');
+        history.pushState({ overlay: 'note-view' }, "");
+    }
 
-        function saveNoteEditor() {
-            if (currentEditNoteIndex > -1) {
-                const text = document.getElementById('note-edit-textarea').value.trim();
-                state.exercises[currentEditNoteIndex].note = text;
-                renderEditList(); 
+    function closeNoteViewer(event) {
+        if (event) event.stopPropagation();
+        document.getElementById('note-view-modal').classList.add('hidden');
+    }
+
+    function renderEditList() {
+        const container = document.getElementById('edit-list');
+        if (!container) return;
+        container.innerHTML = '';
+        state.exercises.forEach((ex, i) => {
+            const hasNote = !!ex.note;
+            const noteBtnClass = hasNote ? 'text-[var(--accent-color)]' : 'text-white/20';
+
+            const div = document.createElement('div');
+            div.className = "flex items-center gap-1.5 bg-white/5 p-3 rounded-2xl relative";
+            div.innerHTML = `
+                <div class="drag-handle w-8 h-10 flex items-center justify-center text-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+                </div>
+
+                <input type="text" value="${ex.name}" onchange="state.exercises[${i}].name=this.value" class="flex-1 bg-transparent font-bold outline-none text-sm px-1 min-w-0">
+
+                <button onclick="openNoteEditor(${i}, event)" class="w-8 h-8 flex items-center justify-center transition-colors ${noteBtnClass} shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+                </button>
+
+                <div class="flex items-center bg-black/40 rounded-xl overflow-hidden border border-white/5 shrink-0">
+                    <button onclick="updateExRep(${i}, -1)" class="w-8 h-10 flex items-center justify-center font-black text-lg active:scale-90 transition-transform">-</button>
+                    <input type="number" value="${ex.reps}" onchange="state.exercises[${i}].reps=parseInt(this.value)" class="w-9 bg-transparent text-center font-black text-xs outline-none">
+                    <button onclick="updateExRep(${i}, 1)" class="w-8 h-10 flex items-center justify-center font-black text-lg text-[var(--accent-color)] active:scale-90 transition-transform">+</button>
+                </div>
+                <button onclick="state.exercises.splice(${i}, 1); renderEditList()" class="w-8 h-8 text-white/20 flex items-center justify-center shrink-0">✕</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function updateExRep(idx, delta) {
+        state.exercises[idx].reps = Math.max(0, state.exercises[idx].reps + delta);
+        renderEditList();
+    }
+
+    function addExerciseField() {
+        state.exercises.push({ name: "New Step", reps: 10 });
+        renderEditList();
+    }
+
+    function saveSettings() {
+        state.name = document.getElementById('edit-complex-name').value;
+        const timeVal = parseInt(document.getElementById('edit-time-val').value) || 0;
+        state.totalDuration = state.inputTimeMode === 'mins' ? timeVal * 60 : timeVal;
+        state.timeLeft = state.totalDuration;
+        
+        // Sync back to the active preset
+        if (state.activePresetId) {
+            const pIndex = state.presets.findIndex(p => p.id === state.activePresetId);
+            if (pIndex !== -1) {
+                state.presets[pIndex].name = state.name;
+                state.presets[pIndex].totalDuration = state.totalDuration;
+                state.presets[pIndex].exercises = JSON.parse(JSON.stringify(state.exercises));
             }
-            closeNoteEditor();
         }
 
-        function openNoteViewer(idx, event) {
-            if (event) event.stopPropagation();
-            const ex = state.exercises[idx];
-            if (!ex || !ex.note) return;
-            document.getElementById('note-view-title').textContent = ex.name;
-            document.getElementById('note-view-body').textContent = ex.note;
-            document.getElementById('note-view-modal').classList.remove('hidden');
-        }
+        saveData(); renderMainList(); updateUI();
+        document.getElementById('settings-overlay').classList.add('hidden');
+    }
 
-        function closeNoteViewer(event) {
-            if (event) event.stopPropagation();
-            document.getElementById('note-view-modal').classList.add('hidden');
-        }
-
-        function renderEditList() {
-            const container = document.getElementById('edit-list');
-            if (!container) return;
-            container.innerHTML = '';
-            state.exercises.forEach((ex, i) => {
-                const hasNote = !!ex.note;
-                const noteBtnClass = hasNote ? 'text-[var(--accent-color)]' : 'text-white/20';
-
-                const div = document.createElement('div');
-                div.className = "flex items-center gap-2 bg-white/5 p-3 rounded-2xl";
-                div.innerHTML = `
-                    <input type="text" value="${ex.name}" onchange="state.exercises[${i}].name=this.value" class="flex-1 bg-transparent font-bold outline-none text-sm px-2">
-                    
-                    <button onclick="openNoteEditor(${i}, event)" class="w-8 h-8 flex items-center justify-center transition-colors ${noteBtnClass}">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+    function renderPresets() {
+        const container = document.getElementById('presets-list');
+        if (!container) return;
+        container.innerHTML = '';
+        state.presets.forEach((p, idx) => {
+            const best = state.highScores[p.name] || 0;
+            const duration = Math.floor(p.totalDuration / 60);
+            const div = document.createElement('div');
+            div.className = "preset-card";
+            div.innerHTML = `
+                <div class="drag-handle w-6 h-10 flex items-center justify-center text-white/10 shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+                </div>
+                <div class="flex-1 flex flex-col justify-center min-w-0">
+                    <span class="font-black text-lg uppercase tracking-tight truncate">${p.name}</span>
+                    <span class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+                        ${duration}m duration • PB: ${best} rounds
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="loadPreset(${p.id})" class="load-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M5 3l14 9-14 9V3z"/></svg>
+                        <span class="font-black uppercase tracking-widest text-[10px]">Load</span>
                     </button>
+                    <button onclick="showConfirmDelete(${p.id})" class="delete-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    }
 
-                    <div class="flex items-center bg-black/40 rounded-xl overflow-hidden border border-white/5">
-                        <button onclick="updateExRep(${i}, -1)" class="w-10 h-10 font-black text-lg">-</button>
-                        <input type="number" value="${ex.reps}" onchange="state.exercises[${i}].reps=parseInt(this.value)" class="w-10 bg-transparent text-center font-black text-xs outline-none">
-                        <button onclick="updateExRep(${i}, 1)" class="w-10 h-10 font-black text-lg text-[var(--accent-color)]">+</button>
-                    </div>
-                    <button onclick="state.exercises.splice(${i}, 1); renderEditList()" class="w-10 h-10 text-white/20 flex items-center justify-center">✕</button>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function updateExRep(idx, delta) {
-            state.exercises[idx].reps = Math.max(0, state.exercises[idx].reps + delta);
-            renderEditList();
-        }
-
-        function addExerciseField() {
-            state.exercises.push({ name: "New Step", reps: 10 });
-            renderEditList();
-        }
-
-        function saveSettings() {
-            state.name = document.getElementById('edit-complex-name').value;
-            const timeVal = parseInt(document.getElementById('edit-time-val').value) || 0;
-            state.totalDuration = state.inputTimeMode === 'mins' ? timeVal * 60 : timeVal;
-            state.timeLeft = state.totalDuration;
-            saveData(); renderMainList(); updateUI(); toggleOverlay('settings-overlay');
-        }
-
-        function renderPresets() {
-            const container = document.getElementById('presets-list');
-            if (!container) return;
-            container.innerHTML = '';
-            state.presets.forEach(p => {
-                const best = state.highScores[p.name] || 0;
-                const duration = Math.floor(p.totalDuration / 60);
-                const div = document.createElement('div');
-                div.className = "preset-card";
-                div.innerHTML = `
-                    <div class="flex-1 flex flex-col justify-center min-w-0">
-                        <span class="font-black text-lg uppercase tracking-tight truncate">${p.name}</span>
-                        <span class="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
-                            ${duration}m duration • PB: ${best} rounds
-                        </span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button onclick="loadPreset(${p.id})" class="load-btn">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M5 3l14 9-14 9V3z"/></svg>
-                            <span class="font-black uppercase tracking-widest text-[10px]">Load</span>
-                        </button>
-                        <button onclick="showConfirmDelete(${p.id})" class="delete-btn">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                        </button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function showConfirmDelete(id) {
-            const btn = document.getElementById('confirm-action-btn');
-            btn.textContent = "Delete";
-            btn.onclick = () => {
-                state.presets = state.presets.filter(p => p.id !== id);
-                saveData();
-                renderPresets();
-                hideConfirm();
-            };
-            document.getElementById('confirm-modal').classList.remove('hidden');
-        }
-
-        function showConfirmPBReset() {
-            const btn = document.getElementById('confirm-action-btn');
-            btn.textContent = "Reset PB";
-            btn.onclick = () => {
-                state.highScores[state.name] = 0;
-                saveData();
-                updateUI();
-                hideConfirm();
-            };
-            document.getElementById('confirm-modal').classList.remove('hidden');
-        }
-
-        function hideConfirm() {
-            document.getElementById('confirm-modal').classList.add('hidden');
-        }
-
-        function loadPreset(id, closeOverlay = true) {
-            const p = state.presets.find(x => x.id === id);
-            if (!p) return;
-            state.name = p.name;
-            state.totalDuration = p.totalDuration;
-            state.timeLeft = p.totalDuration;
-            state.exercises = JSON.parse(JSON.stringify(p.exercises));
-            state.activeIndex = 0; state.rounds = 0;
-            if (closeOverlay) { renderMainList(); updateUI(); toggleOverlay('presets-overlay'); }
-        }
-
-        function addMinute() {
-            state.timeLeft += 60;
-            state.totalDuration += 60;
-            updateUI();
-        }
-
-        function resetApp() {
-            if (state.isRunning) pauseSession();
-            state.timeLeft = state.totalDuration;
-            state.rounds = 0;
-            state.activeIndex = 0;
-            updateUI(); renderMainList();
-            document.getElementById('restart-icon').classList.remove('hidden');
-            document.getElementById('stop-icon').classList.add('hidden');
-        }
-
-        function createNewPreset() {
-            const id = Date.now();
-            const newPreset = { id, name: "New Workout", totalDuration: 3600, exercises: [{name: "Exercise 1", reps: 10}] };
-            state.presets.push(newPreset);
+    function showConfirmDelete(id) {
+        const btn = document.getElementById('confirm-action-btn');
+        document.getElementById('confirm-title').textContent = "Delete Routine?";
+        btn.textContent = "Delete";
+        btn.onclick = () => {
+            state.presets = state.presets.filter(p => p.id !== id);
+            
+            // Clear active ID if they delete the currently loaded routine
+            if (state.activePresetId === id) {
+                state.activePresetId = null;
+            }
+            
             saveData();
-            loadPreset(id);
-        }
+            renderPresets();
+            hideConfirm();
+        };
+        document.getElementById('confirm-modal').classList.remove('hidden');
+        history.pushState({ overlay: 'confirm' }, "");
+    }
 
-        function saveData() {
-            localStorage.setItem('kb_complex_v16_data', JSON.stringify({
-                name: state.name, totalDuration: state.totalDuration,
-                exercises: state.exercises, presets: state.presets,
-                theme: state.theme, highScores: state.highScores,
-                fullListMode: state.fullListMode,
-                inputTimeMode: state.inputTimeMode
-            }));
-        }
+    function showConfirmPBReset() {
+        const btn = document.getElementById('confirm-action-btn');
+        document.getElementById('confirm-title').textContent = "Reset Record?";
+        document.getElementById('confirm-body').textContent = "Clear high score for this protocol?";
+        btn.textContent = "Reset Record";
+        btn.onclick = () => {
+            state.highScores[state.name] = 0;
+            saveData();
+            updateUI();
+            hideConfirm();
+        };
+        document.getElementById('confirm-modal').classList.remove('hidden');
+        history.pushState({ overlay: 'confirm' }, "");
+    }
 
-        window.onload = init;
-    </script>
+    function hideConfirm() {
+        document.getElementById('confirm-modal').classList.add('hidden');
+    }
+
+    function loadPreset(id, closeOverlay = true) {
+        const p = state.presets.find(x => x.id === id);
+        if (!p) return;
+        
+        state.activePresetId = id; // Update the active preset
+        
+        state.name = p.name;
+        state.totalDuration = p.totalDuration;
+        state.timeLeft = p.totalDuration;
+        state.exercises = JSON.parse(JSON.stringify(p.exercises));
+        state.activeIndex = 0; state.rounds = 0;
+        if (closeOverlay) {
+            renderMainList();
+            updateUI();
+            document.getElementById('presets-overlay').classList.add('hidden');
+        }
+    }
+
+    function addMinute() {
+        state.timeLeft += 60;
+        state.totalDuration += 60;
+        updateUI();
+    }
+
+    function resetApp() {
+        if (state.isRunning) pauseSession();
+        state.timeLeft = state.totalDuration;
+        state.rounds = 0;
+        state.activeIndex = 0;
+        updateUI(); renderMainList();
+        document.getElementById('restart-icon').classList.remove('hidden');
+        document.getElementById('stop-icon').classList.add('hidden');
+    }
+
+    function createNewPreset() {
+        const id = Date.now();
+        const newPreset = { id, name: "New Workout", totalDuration: 3600, exercises: [{name: "Exercise 1", reps: 10}] };
+        state.presets.push(newPreset);
+        saveData();
+        loadPreset(id);
+    }
+
+    function saveData() {
+        localStorage.setItem('kb_complex_v16_data', JSON.stringify({
+            name: state.name, totalDuration: state.totalDuration,
+            exercises: state.exercises, presets: state.presets,
+            theme: state.theme, highScores: state.highScores,
+            fullListMode: state.fullListMode,
+            inputTimeMode: state.inputTimeMode,
+            activePresetId: state.activePresetId // Remember the active preset on refresh
+        }));
+    }
+
+    window.onload = init;
+</script>
 </body>
 </html>
